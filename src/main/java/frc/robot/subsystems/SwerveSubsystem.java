@@ -57,7 +57,7 @@ public class SwerveSubsystem extends SubsystemBase {
         swerveDrive.resetOdometry(initialHolonomicPose);
     }
 
-    public Pose2d getpose(){
+    public Pose2d getPose(){
         return swerveDrive.getPose();
     }
 
