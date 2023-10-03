@@ -5,6 +5,10 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.Autos;
 import frc.robot.commands.ExampleCommand;
@@ -12,7 +16,10 @@ import frc.robot.subsystems.ExampleSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import frc.robot.subsystems.SwerveSubsystem;
+import frc.robot.commands.swerve.*;
 
+import java.io.File;
 
 
 /**
@@ -25,16 +32,33 @@ public class RobotContainer
 {
     // The robot's subsystems and commands are defined here...
     private final ExampleSubsystem exampleSubsystem = new ExampleSubsystem();
+
+    private final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
     
     // Replace with CommandPS4Controller or CommandJoystick if needed
+    XboxController driverXbox = new XboxController(0);
 
-    
-    
+
+
     /** The container for the robot. Contains subsystems, OI devices, and commands. */
     public RobotContainer()
     {
         // Configure the trigger bindings
         configureBindings();
+
+        AbsoluteDrive closedAbsoluteDrive = new AbsoluteDrive(drivebase,
+                // Applies deadbands and inverts controls because joysticks
+                // are back-right positive while robot
+                // controls are front-left positive
+                () -> MathUtil.applyDeadband(driverXbox.getLeftY(),
+                        OperatorConstants.LEFT_Y_DEADBAND),
+                () -> MathUtil.applyDeadband(driverXbox.getLeftX(),
+                        OperatorConstants.LEFT_X_DEADBAND),
+                () -> -driverXbox.getRightX(),
+                () -> -driverXbox.getRightY(),
+                false);
+
+        drivebase.setDefaultCommand(closedAbsoluteDrive);
     }
     
     
@@ -52,6 +76,8 @@ public class RobotContainer
         // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
         new Trigger(exampleSubsystem::exampleCondition)
                 .onTrue(new ExampleCommand(exampleSubsystem));
+
+        new Trigger(driverXbox::getAButton).onTrue(new InstantCommand(drivebase::zeroGyro));
         
         // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
         // cancelling on release.
