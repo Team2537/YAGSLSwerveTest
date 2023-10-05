@@ -36,7 +36,29 @@ public class RobotContainer
     private final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve"));
     
     // Replace with CommandPS4Controller or CommandJoystick if needed
-    XboxController driverXbox = new XboxController(0);
+    CommandXboxController driverXbox = SingletonCommandXboxController.INSTANCE;
+
+
+    AbsoluteDrive closedAbsoluteDrive = new AbsoluteDrive(drivebase,
+            // Applies deadbands and inverts controls because joysticks
+            // are back-right positive while robot
+            // controls are front-left positive
+            () -> MathUtil.applyDeadband(driverXbox.getLeftY(),
+                    OperatorConstants.LEFT_Y_DEADBAND),
+            () -> MathUtil.applyDeadband(driverXbox.getLeftX(),
+                    OperatorConstants.LEFT_X_DEADBAND),
+            () -> -driverXbox.getRightX(),
+            () -> -driverXbox.getRightY(),
+            false);
+
+    TeleopDrive closedTeleopDrive = new TeleopDrive(drivebase,
+            () -> driverXbox.getLeftX(),
+            () -> driverXbox.getLeftY(),
+            () -> -driverXbox.getRightX(),
+            () -> driverXbox.getHID().getLeftBumper(),
+            false,
+            true
+    );
 
 
 
@@ -46,19 +68,9 @@ public class RobotContainer
         // Configure the trigger bindings
         configureBindings();
 
-        AbsoluteDrive closedAbsoluteDrive = new AbsoluteDrive(drivebase,
-                // Applies deadbands and inverts controls because joysticks
-                // are back-right positive while robot
-                // controls are front-left positive
-                () -> MathUtil.applyDeadband(driverXbox.getLeftY(),
-                        OperatorConstants.LEFT_Y_DEADBAND),
-                () -> MathUtil.applyDeadband(driverXbox.getLeftX(),
-                        OperatorConstants.LEFT_X_DEADBAND),
-                () -> -driverXbox.getRightX(),
-                () -> -driverXbox.getRightY(),
-                false);
 
-        drivebase.setDefaultCommand(closedAbsoluteDrive);
+
+        drivebase.setDefaultCommand(closedTeleopDrive);
     }
     
     
@@ -77,7 +89,9 @@ public class RobotContainer
         new Trigger(exampleSubsystem::exampleCondition)
                 .onTrue(new ExampleCommand(exampleSubsystem));
 
-        new Trigger(driverXbox::getAButton).onTrue(new InstantCommand(drivebase::zeroGyro));
+        driverXbox.rightBumper().onTrue(new InstantCommand(drivebase::zeroGyro));
+
+        driverXbox.a().toggleOnTrue(closedAbsoluteDrive);
         
         // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
         // cancelling on release.

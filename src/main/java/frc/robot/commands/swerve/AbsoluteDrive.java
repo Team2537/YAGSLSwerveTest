@@ -92,6 +92,7 @@ public class AbsoluteDrive extends CommandBase
     @Override
     public void end(boolean interrupted)
     {
+        swerve.getDefaultCommand().schedule();
     }
 
     // Returns true when the command should end.
